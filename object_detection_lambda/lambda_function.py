@@ -1,4 +1,3 @@
-# import the necessary packages
 import base64
 import boto3
 import cv2
@@ -8,13 +7,14 @@ import os
 import time
 from botocore.exceptions import NoCredentialsError
 from boto3.dynamodb.conditions import Key
+from decimal import Decimal
 
 # configure S3 client and DynamoDB resource
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 
 # specify your DynamoDB table name
-table = dynamodb.Table('your_table_name')
+table = dynamodb.Table('detected_image')
 
 # construct the argument parse and parse the arguments
 confthres = 0.3
@@ -45,8 +45,9 @@ def load_model(configpath, weightspath):
 
 def get_image_from_s3(bucket, key):
     try:
-        s3.get_object(Bucket=bucket, Key=key)
-        print('Object exists')
+        response = s3.get_object(Bucket=bucket, Key=key)
+        image_bytes = response['Body'].read()
+        return image_bytes
     except NoCredentialsError:
         print('No credentials to access S3')
     except Exception as e:
@@ -122,17 +123,17 @@ def do_prediction(image, net, LABELS):
     # ensure at least one detection exists
     detected_result = []
     if len(idxs) > 0:
-        # loop over the indexes we are keeping
         for i in idxs.flatten():
+            accuracy = Decimal(str(confidences[i]))  # Convert float to Decimal
             detected_result.append(
                 {
                     'label': LABELS[classIDs[i]],
-                    'accuracy': confidences[i],
+                    'accuracy': accuracy,
                     'rectangle': {'height': boxes[i][3], 'left': boxes[i][0], 'top': boxes[i][1], 'width': boxes[i][2]}
                 }
             )
             print("detected item:{}, accuracy:{}, X:{}, Y:{}, width:{}, height:{}".format(LABELS[classIDs[i]],
-                                                                                          confidences[i],
+                                                                                          accuracy,
                                                                                           boxes[i][0],
                                                                                           boxes[i][1],
                                                                                           boxes[i][2],
@@ -148,16 +149,19 @@ def lambda_handler(event, context):
     labelsPath = "coco.names"
     cfgpath = "yolov3-tiny.cfg"
     wpath = "yolov3-tiny.weights"
-    Lables = get_labels(labelsPath)
+    Labels = get_labels(labelsPath)
     CFG = get_config(cfgpath)
     Weights = get_weights(wpath)
     net = load_model(CFG, Weights)
 
-    # get image from s3
-    image = get_image_from_s3(bucket, key)
+    # get image from S3
+    image_bytes = get_image_from_s3(bucket, key)
+
+    # decode image
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
     # do prediction
-    detected_result = do_prediction(image, net, Lables)
+    detected_result = do_prediction(image, net, Labels)
 
     # store result into DynamoDB
     table.put_item(Item={'s3_url': 's3://' + bucket + '/' + key, 'tags': detected_result})
