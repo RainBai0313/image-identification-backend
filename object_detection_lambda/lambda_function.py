@@ -1,28 +1,34 @@
 # import the necessary packages
 import base64
-
-import numpy as np
-import sys
-import time
+import boto3
 import cv2
+import json
+import numpy as np
 import os
+import time
+from botocore.exceptions import NoCredentialsError
+from boto3.dynamodb.conditions import Key
+
+# configure S3 client and DynamoDB resource
+s3 = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+# specify your DynamoDB table name
+table = dynamodb.Table('your_table_name')
 
 # construct the argument parse and parse the arguments
 confthres = 0.3
 nmsthres = 0.1
+yolo_path = "/opt/yolo_tiny_configs"
 
 
 def get_labels(labels_path):
-    # load the COCO class labels our YOLO model was trained on
     lpath = os.path.sep.join([yolo_path, labels_path])
-
-    print(yolo_path)
     LABELS = open(lpath).read().strip().split("\n")
     return LABELS
 
 
 def get_weights(weights_path):
-    # derive the paths to the YOLO weights and model configuration
     weightsPath = os.path.sep.join([yolo_path, weights_path])
     return weightsPath
 
@@ -33,10 +39,19 @@ def get_config(config_path):
 
 
 def load_model(configpath, weightspath):
-    # load our YOLO object detector trained on COCO dataset (80 classes)
-    print("[INFO] loading YOLO from disk...")
     net = cv2.dnn.readNetFromDarknet(configpath, weightspath)
     return net
+
+
+def get_image_from_s3(bucket, key):
+    try:
+        s3.get_object(Bucket=bucket, Key=key)
+        print('Object exists')
+    except NoCredentialsError:
+        print('No credentials to access S3')
+    except Exception as e:
+        print(e)
+        return None
 
 
 def do_prediction(image, net, LABELS):
@@ -125,51 +140,29 @@ def do_prediction(image, net, LABELS):
     return detected_result
 
 
-## argument
-# if len(sys.argv) != 3:
-#     raise ValueError("Argument list is wrong. Please use the following format:  {} {} {}".
-#                      format("python iWebLens_server.py", "<yolo_config_folder>", "<Image file path>"))
+def lambda_handler(event, context):
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
 
-yolo_path = "yolo_tiny_configs"
+    # load model
+    labelsPath = "coco.names"
+    cfgpath = "yolov3-tiny.cfg"
+    wpath = "yolov3-tiny.weights"
+    Lables = get_labels(labelsPath)
+    CFG = get_config(cfgpath)
+    Weights = get_weights(wpath)
+    net = load_model(CFG, Weights)
 
-## Yolov3-tiny versrion
-labelsPath = "coco.names"
-cfgpath = "yolov3-tiny.cfg"
-wpath = "yolov3-tiny.weights"
+    # get image from s3
+    image = get_image_from_s3(bucket, key)
 
-Lables = get_labels(labelsPath)
-CFG = get_config(cfgpath)
-Weights = get_weights(wpath)
+    # do prediction
+    detected_result = do_prediction(image, net, Lables)
 
+    # store result into DynamoDB
+    table.put_item(Item={'s3_url': 's3://' + bucket + '/' + key, 'tags': detected_result})
 
-def decode_and_detection(base64_string):
-
-    # decode base64 image
-    image_base64 = base64.b64decode(base64_string)
-    image = cv2.imdecode(np.fromstring(image_base64, np.uint8), cv2.IMREAD_COLOR).copy()
-
-    # do the prediction(copy from main())
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    nets = load_model(CFG, Weights)
-    prediction_result = do_prediction(image, nets, Lables)
-    return prediction_result
-
-def main():
-    try:
-        imagefile = str(sys.argv[2])
-        img = cv2.imread(imagefile)
-        npimg = np.array(img)
-        image = npimg.copy()
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # load the neural net.  Should be local to this method as its multi-threaded endpoint
-        nets = load_model(CFG, Weights)
-        do_prediction(image, nets, Lables)
-
-
-    except Exception as e:
-
-        print("Exception  {}".format(e))
-
-
-if __name__ == '__main__':
-    main()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Image processed successfully!')
+    }
