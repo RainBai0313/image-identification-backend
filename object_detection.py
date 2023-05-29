@@ -142,8 +142,6 @@ CFG = get_config(cfgpath)
 Weights = get_weights(wpath)
 
 
-# TODO, you should  make this console script into webservice using Flask
-
 def decode_and_detection(base64_string):
 
     # decode base64 image
