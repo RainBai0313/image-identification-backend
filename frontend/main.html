@@ -34,7 +34,7 @@
             }
 
             async function uploadToS3(filename, fileContent) {
-                var Auth = window.aws_amplify.Auth;
+                var Auth = window.Amplify.Auth;
 
                 try {
                     const session = await Auth.currentSession();
