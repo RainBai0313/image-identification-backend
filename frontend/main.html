@@ -1,51 +1,74 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>S3 File Upload</title>
         <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.12.min.js"></script>
+        <script src="https://unpkg.com/aws-amplify@latest/dist/aws-amplify.min.js"></script>
+        <title>Upload to S3</title>
     </head>
     <body>
-        <input type="file" id="file-upload" />
-
+        <button id="uploadButton">Upload File</button>
+        <input type="file" id="fileUpload" style="display: none" />
         <script type="text/javascript">
-            // Assuming that you have an input field with the id "file-upload"
-            document.getElementById('file-upload').addEventListener('change', function(e) {
-                var file = e.target.files[0];
+            var uploadButton = document.getElementById('uploadButton');
+            var fileUpload = document.getElementById('fileUpload');
 
-                // Import AWS SDK and instantiate a new AWS.CognitoIdentityCredentials object
-                var AWS = window.AWS;
-
-                // Configure the region
-                AWS.config.region = 'us-east-1'; // your region here
-
-                // Configure the credentials provider to use your identity pool
-                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                    IdentityPoolId: 'us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // your identity pool id here
-                    Logins: {
-                        // your user pool id here
-                        'cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx': idToken
-                    }
-                });
-
-                // Make the call to obtain credentials
-                AWS.config.credentials.get(function(){
-
-                    // Create a new service object
-                    var s3 = new AWS.S3({
-                        apiVersion: '2006-03-01',
-                        params: {Bucket: 'your_bucket_name'}
-                    });
-
-                    // Upload the file to your bucket
-                    s3.upload({Key: 'file_name', Body: file}, function(err, data) {
-                        if (err) {
-                            console.log(err, 'there was an error uploading your file');
-                        } else {
-                            console.log('Successfully uploaded file.');
-                        }
-                    });
-                });
+            uploadButton.addEventListener('click', function() {
+                fileUpload.click();
             });
+
+            fileUpload.addEventListener('change', function() {
+                var file = fileUpload.files[0];
+                if (file) {
+                    handleFileUpload(file);
+                }
+            });
+
+            function handleFileUpload(file) {
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var fileContent = reader.result;
+                    uploadToS3(file.name, fileContent);
+                };
+                reader.readAsText(file);
+            }
+
+            function uploadToS3(filename, fileContent) {
+                var Auth = window.Amplify.Auth;
+
+                Auth.currentSession()
+                    .then(function(data) {
+                        var idToken = data.getIdToken();
+                        var jwtToken = idToken.getJwtToken();
+
+                        var AWS = window.AWS;
+                        AWS.config.region = 'us-east-1';
+
+                        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                            IdentityPoolId: 'us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // replace with your Identity Pool ID
+                            Logins: {
+                                'cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx': jwtToken
+                            }
+                        });
+
+                        AWS.config.credentials.get(function() {
+                            var s3 = new AWS.S3({
+                                apiVersion: '2006-03-01',
+                                params: {Bucket: 'your_bucket_name'}
+                            });
+
+                            s3.upload({Key: filename, Body: fileContent}, function(err, data) {
+                                if (err) {
+                                    console.log(err, 'There was an error uploading your file');
+                                } else {
+                                    console.log('Successfully uploaded file.');
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.log(err);
+                    });
+            }
         </script>
     </body>
 </html>
