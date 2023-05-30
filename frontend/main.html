@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>S3 File Upload</title>
+        <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.12.min.js"></script>
+    </head>
+    <body>
+        <input type="file" id="file-upload" />
+
+        <script type="text/javascript">
+            // Assuming that you have an input field with the id "file-upload"
+            document.getElementById('file-upload').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+
+                // Import AWS SDK and instantiate a new AWS.CognitoIdentityCredentials object
+                var AWS = window.AWS;
+
+                // Configure the region
+                AWS.config.region = 'us-east-1'; // your region here
+
+                // Configure the credentials provider to use your identity pool
+                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: 'us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // your identity pool id here
+                    Logins: {
+                        // your user pool id here
+                        'cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx': idToken
+                    }
+                });
+
+                // Make the call to obtain credentials
+                AWS.config.credentials.get(function(){
+
+                    // Create a new service object
+                    var s3 = new AWS.S3({
+                        apiVersion: '2006-03-01',
+                        params: {Bucket: 'your_bucket_name'}
+                    });
+
+                    // Upload the file to your bucket
+                    s3.upload({Key: 'file_name', Body: file}, function(err, data) {
+                        if (err) {
+                            console.log(err, 'there was an error uploading your file');
+                        } else {
+                            console.log('Successfully uploaded file.');
+                        }
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>
