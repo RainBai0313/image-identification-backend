@@ -9,6 +9,19 @@
         <button id="uploadButton">Upload File</button>
         <input type="file" id="fileUpload" style="display: none" />
         <script type="text/javascript">
+            // Import Amplify
+            const Amplify = window.Amplify;
+
+            // Configure Amplify
+            Amplify.configure({
+                Auth: {
+                    region: 'us-east-1',
+                    userPoolId: 'us-east-1_noGkk04sC', // your user pool ID
+                    userPoolWebClientId: '2bo2g45f23039mjhqjt0p18d79', // your app client ID
+                    identityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // your identity pool ID
+                }
+            });
+
             var uploadButton = document.getElementById('uploadButton');
             var fileUpload = document.getElementById('fileUpload');
 
@@ -26,15 +39,14 @@
             function handleFileUpload(file) {
                 var reader = new FileReader();
                 reader.onload = function() {
-                    var arrayBuffer = reader.result;
-                    var fileContent = new Uint8Array(arrayBuffer);
+                    var fileContent = reader.result;
                     uploadToS3(file.name, fileContent);
                 };
-                reader.readAsArrayBuffer(file);
+                reader.readAsText(file);
             }
 
             async function uploadToS3(filename, fileContent) {
-                var Auth = window.Amplify.Auth;
+                var Auth = Amplify.Auth;
 
                 try {
                     const session = await Auth.currentSession();
@@ -54,7 +66,7 @@
                     AWS.config.credentials.get(function() {
                         var s3 = new AWS.S3({
                             apiVersion: '2006-03-01',
-                            params: {Bucket: 'assigment2-group6-bucket/images'}
+                            params: {Bucket: 'assigment2-group6-bucket'}
                         });
 
                         s3.upload({Key: filename, Body: fileContent}, function(err, data) {
