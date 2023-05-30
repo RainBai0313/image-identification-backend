@@ -32,42 +32,42 @@
                 reader.readAsText(file);
             }
 
-            function uploadToS3(filename, fileContent) {
-                var Auth = window.Amplify.Auth;
+            async function uploadToS3(filename, fileContent) {
+                var Auth = window.aws_amplify.Auth;
 
-                Auth.currentSession()
-                    .then(function(data) {
-                        var idToken = data.getIdToken();
-                        var jwtToken = idToken.getJwtToken();
+                try {
+                    const session = await Auth.currentSession();
+                    var idToken = session.getIdToken();
+                    var jwtToken = idToken.getJwtToken();
 
-                        var AWS = window.AWS;
-                        AWS.config.region = 'us-east-1';
+                    var AWS = window.AWS;
+                    AWS.config.region = 'us-east-1';
 
-                        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                            IdentityPoolId: 'us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // replace with your Identity Pool ID
-                            Logins: {
-                                'cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx': jwtToken
+                    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                        IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // replace with your Identity Pool ID
+                        Logins: {
+                            'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': jwtToken
+                        }
+                    });
+
+                    AWS.config.credentials.get(function() {
+                        var s3 = new AWS.S3({
+                            apiVersion: '2006-03-01',
+                            params: {Bucket: 'assigment2-group6-bucket'}
+                        });
+
+                        s3.upload({Key: filename, Body: fileContent}, function(err, data) {
+                            if (err) {
+                                console.log(err, 'There was an error uploading your file');
+                            } else {
+                                console.log('Successfully uploaded file.');
                             }
                         });
-
-                        AWS.config.credentials.get(function() {
-                            var s3 = new AWS.S3({
-                                apiVersion: '2006-03-01',
-                                params: {Bucket: 'your_bucket_name'}
-                            });
-
-                            s3.upload({Key: filename, Body: fileContent}, function(err, data) {
-                                if (err) {
-                                    console.log(err, 'There was an error uploading your file');
-                                } else {
-                                    console.log('Successfully uploaded file.');
-                                }
-                            });
-                        });
-                    })
-                    .catch(function(err) {
-                        console.log(err);
                     });
+                }
+                catch(err) {
+                    console.log(err);
+                }
             }
         </script>
     </body>
