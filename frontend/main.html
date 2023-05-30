@@ -26,10 +26,11 @@
             function handleFileUpload(file) {
                 var reader = new FileReader();
                 reader.onload = function() {
-                    var fileContent = reader.result;
+                    var arrayBuffer = reader.result;
+                    var fileContent = new Uint8Array(arrayBuffer);
                     uploadToS3(file.name, fileContent);
                 };
-                reader.readAsText(file);
+                reader.readAsArrayBuffer(file);
             }
 
             async function uploadToS3(filename, fileContent) {
