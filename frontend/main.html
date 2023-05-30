@@ -54,7 +54,7 @@
                     AWS.config.credentials.get(function() {
                         var s3 = new AWS.S3({
                             apiVersion: '2006-03-01',
-                            params: {Bucket: 'assigment2-group6-bucket'}
+                            params: {Bucket: 'assigment2-group6-bucket/images'}
                         });
 
                         s3.upload({Key: filename, Body: fileContent}, function(err, data) {
