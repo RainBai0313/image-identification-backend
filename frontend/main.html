@@ -3,12 +3,12 @@
     <head>
         <title>Upload to S3</title>
         <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.12.min.js"></script>
-        <script src="https://unpkg.com/aws-amplify@4.3.5/dist/aws-amplify.min.js" defer></script>
+        <script src="https://aws-amplify.github.io/amplify-js/media/amplify.js"></script>
     </head>
     <body>
         <button id="uploadButton">Upload File</button>
         <input type="file" id="fileUpload" style="display: none" />
-        <script type="text/javascript" defer>
+        <script type="text/javascript">
             var uploadButton = document.getElementById('uploadButton');
             var fileUpload = document.getElementById('fileUpload');
 
