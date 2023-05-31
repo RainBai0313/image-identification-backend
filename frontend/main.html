@@ -10,7 +10,7 @@
         <input type="file" id="fileUpload" style="display: none" />
         <script type="text/javascript">
             // Import AWS Amplify
-            var Amplify = window.amplify;
+            var Amplify = window.AWSAmplify;
 
             var uploadButton = document.getElementById('uploadButton');
             var fileUpload = document.getElementById('fileUpload');
@@ -37,7 +37,7 @@
 
             async function uploadToS3(filename, fileContent) {
                 try {
-                    await Amplify.Auth.configure();
+                    await Amplify.configure();
                     const currentSession = await Amplify.Auth.currentSession();
                     const idToken = currentSession.getIdToken().getJwtToken();
 
