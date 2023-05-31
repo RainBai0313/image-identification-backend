@@ -26,17 +26,18 @@
                 }
             });
 
-            function handleFileUpload(file) {
+            async function handleFileUpload(file) {
                 var reader = new FileReader();
-                reader.onload = function() {
+                reader.onload = async function() {
                     var fileContent = reader.result;
-                    uploadToS3(file.name, fileContent);
+                    await uploadToS3(file.name, fileContent);
                 };
                 reader.readAsText(file);
             }
 
             async function uploadToS3(filename, fileContent) {
                 try {
+                    await Amplify.Auth.configure();
                     const currentSession = await Amplify.Auth.currentSession();
                     const idToken = currentSession.getIdToken().getJwtToken();
 
