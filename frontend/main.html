@@ -12,15 +12,6 @@
             // Import AWS Amplify
             var Amplify = window.amplify;
 
-            // Configure AWS Amplify
-            Amplify.configure({
-                Auth: {
-                    region: 'us-east-1',
-                    userPoolId: 'us-east-1_noGkk04sC', // your user pool ID
-                    userPoolWebClientId: '2bo2g45f23039mjhqjt0p18d79', // your app client ID
-                }
-            });
-
             var uploadButton = document.getElementById('uploadButton');
             var fileUpload = document.getElementById('fileUpload');
 
@@ -50,28 +41,27 @@
                     const idToken = currentSession.getIdToken().getJwtToken();
 
                     var AWS = window.AWS;
-                    AWS.config.region = 'us-east-1';
-
-                    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                        IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // replace with your Identity Pool ID
-                        Logins: {
-                            'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': idToken
-                        }
+                    AWS.config.update({
+                        region: 'us-east-1',
+                        credentials: new AWS.CognitoIdentityCredentials({
+                            IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // replace with your Identity Pool ID
+                            Logins: {
+                                'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': idToken
+                            }
+                        })
                     });
 
-                    AWS.config.credentials.get(function() {
-                        var s3 = new AWS.S3({
-                            apiVersion: '2006-03-01',
-                            params: {Bucket: 'assigment2-group6-bucket'}
-                        });
+                    var s3 = new AWS.S3({
+                        apiVersion: '2006-03-01',
+                        params: {Bucket: 'assigment2-group6-bucket/images'}
+                    });
 
-                        s3.upload({Key: filename, Body: fileContent}, function(err, data) {
-                            if (err) {
-                                console.log(err, 'There was an error uploading your file');
-                            } else {
-                                console.log('Successfully uploaded file.');
-                            }
-                        });
+                    s3.upload({Key: filename, Body: fileContent}, function(err, data) {
+                        if (err) {
+                            console.log(err, 'There was an error uploading your file');
+                        } else {
+                            console.log('Successfully uploaded file.');
+                        }
                     });
                 }
                 catch(err) {
