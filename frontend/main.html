@@ -2,22 +2,13 @@
 <html>
     <head>
         <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.12.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/aws-amplify@4.3.5/dist/aws-amplify.min.js"></script>
+        <script src="https://unpkg.com/aws-amplify@4.3.5/dist/aws-amplify.min.js"></script>
         <title>Upload to S3</title>
     </head>
     <body>
         <button id="uploadButton">Upload File</button>
         <input type="file" id="fileUpload" style="display: none" />
         <script type="text/javascript">
-            // Configure AWS Amplify
-            Amplify.configure({
-                Auth: {
-                    region: 'us-east-1',
-                    userPoolId: 'us-east-1_noGkk04sC', // Replace with your User Pool ID
-                    userPoolWebClientId: 'xxxxxxxxxxxxx', // Replace with your User Pool App Client ID
-                }
-            });
-
             var uploadButton = document.getElementById('uploadButton');
             var fileUpload = document.getElementById('fileUpload');
 
@@ -32,35 +23,29 @@
                 }
             });
 
-            async function handleFileUpload(file) {
+            function handleFileUpload(file) {
                 var reader = new FileReader();
-                reader.onload = async function() {
+                reader.onload = function() {
                     var fileContent = reader.result;
-                    await uploadToS3(file.name, fileContent);
+                    uploadToS3(file.name, fileContent);
                 };
                 reader.readAsText(file);
             }
 
-            async function uploadToS3(filename, fileContent) {
-                try {
-                    await Amplify.Auth.configure();
-                    const currentSession = await Amplify.Auth.currentSession();
-                    const idToken = currentSession.getIdToken().getJwtToken();
+            function uploadToS3(filename, fileContent) {
+                var AWS = window.AWS;
+                AWS.config.region = 'us-east-1';
+                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // Replace with your Identity Pool ID
+                    Logins: {
+                        'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': jwtToken
+                    }
+                });
 
-                    var AWS = window.AWS;
-                    AWS.config.update({
-                        region: 'us-east-1',
-                        credentials: new AWS.CognitoIdentityCredentials({
-                            IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3', // Replace with your Identity Pool ID
-                            Logins: {
-                                'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': idToken
-                            }
-                        })
-                    });
-
+                AWS.config.credentials.get(function() {
                     var s3 = new AWS.S3({
                         apiVersion: '2006-03-01',
-                        params: {Bucket: 'assigment2-group6-bucket'} // Replace with your S3 bucket name
+                        params: {Bucket: 'assigment2-group6-bucket'}
                     });
 
                     s3.upload({Key: filename, Body: fileContent}, function(err, data) {
@@ -70,10 +55,7 @@
                             console.log('Successfully uploaded file.');
                         }
                     });
-                }
-                catch(err) {
-                    console.log(err);
-                }
+                });
             }
         </script>
     </body>
