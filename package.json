@@ -1,0 +1,19 @@
+{
+  "name": "fit5225assignment2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack-cli": "^5.1.1"
+  },
+  "dependencies": {
+    "amazon-cognito-identity-js": "^6.2.0",
+    "aws-sdk": "^2.1387.0"
+  }
+}

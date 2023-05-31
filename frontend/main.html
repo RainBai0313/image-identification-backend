@@ -1,64 +1,36 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>File Upload to S3 after Cognito Login</title>
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.764.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/amazon-cognito-identity-js/4.6.0/amazon-cognito-identity.min.js"></script>
-</head>
-<body>
-    <input type="file" id="fileUpload">
-    <button onclick="uploadFile()">Upload File</button>
-    <script>
-        document.getElementById('fileUpload').addEventListener('change', function(evt) {
-            var file = evt.target.files[0];
-            if (file) {
-                uploadFile(file);
+    <head>
+        <title>Upload to S3</title>
+    </head>
+    <body>
+        <button id="uploadButton">Upload File</button>
+        <input type="file" id="fileUpload" style="display: none" />
+
+        <script src="./dist/my-app.js"></script>
+        <script type="text/javascript">
+            var uploadButton = document.getElementById('uploadButton');
+            var fileUpload = document.getElementById('fileUpload');
+
+            uploadButton.addEventListener('click', function() {
+                fileUpload.click();
+            });
+
+            fileUpload.addEventListener('change', function() {
+                var file = fileUpload.files[0];
+                if (file) {
+                    handleFileUpload(file);
+                }
+            });
+
+            function handleFileUpload(file) {
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var fileContent = reader.result;
+                    uploadFile(file.name, fileContent);
+                };
+                reader.readAsText(file);
             }
-        });
-
-        function uploadFile(file) {
-            var poolData = {
-                UserPoolId: 'us-east-1_noGkk04sC',
-                ClientId: '2bo2g45f23039mjhqjt0p18d79'
-            };
-            var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-            var cognitoUser = userPool.getCurrentUser();
-
-            if (cognitoUser != null) {
-                cognitoUser.getSession(function(err, result) {
-                    if (result) {
-                        console.log('You are now logged in.');
-
-                        AWS.config.region = 'us-east-1';
-
-                        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                            IdentityPoolId: 'us-east-1:caa20059-c2bd-416c-94c1-43988c2e10e3',
-                            Logins: {
-                                'cognito-idp.us-east-1.amazonaws.com/us-east-1_noGkk04sC': result.getIdToken().getJwtToken()
-                            }
-                        });
-
-                        var s3 = new AWS.S3({
-                            apiVersion: '2006-03-01',
-                            params: { Bucket: 'assigment2-group6-bucket/images' }
-                        });
-
-                        var params = {
-                            Key: file.name,
-                            Body: file
-                        };
-
-                        s3.upload(params, function(err, data) {
-                            if (err) {
-                                console.log(err, 'There was an error uploading your file.');
-                            } else {
-                                console.log('Successfully uploaded file.');
-                            }
-                        });
-                    }
-                });
-            }
-        }
-    </script>
-</body>
+        </script>
+    </body>
 </html>
