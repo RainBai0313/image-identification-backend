@@ -14,7 +14,7 @@ s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 
 # specify your DynamoDB table name
-table = dynamodb.Table('detected_image')
+table = dynamodb.Table('detected_images')
 
 # construct the argument parse and parse the arguments
 confthres = 0.3
@@ -126,11 +126,7 @@ def do_prediction(image, net, LABELS):
         for i in idxs.flatten():
             accuracy = Decimal(str(confidences[i]))  # Convert float to Decimal
             detected_result.append(
-                {
-                    'label': LABELS[classIDs[i]],
-                    'accuracy': accuracy,
-                    'rectangle': {'height': boxes[i][3], 'left': boxes[i][0], 'top': boxes[i][1], 'width': boxes[i][2]}
-                }
+                LABELS[classIDs[i]]
             )
             print("detected item:{}, accuracy:{}, X:{}, Y:{}, width:{}, height:{}".format(LABELS[classIDs[i]],
                                                                                           accuracy,
@@ -143,6 +139,7 @@ def do_prediction(image, net, LABELS):
 
 def lambda_handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
+    user_uuid = event['Records'][0]['s3']['object']['key'].split('/')[1]  # This is the new line for getting UUID
     key = event['Records'][0]['s3']['object']['key']
 
     # load model
@@ -164,7 +161,8 @@ def lambda_handler(event, context):
     detected_result = do_prediction(image, net, Labels)
 
     # store result into DynamoDB
-    table.put_item(Item={'s3_url': 's3://' + bucket + '/' + key, 'tags': detected_result})
+    # Here you can decide what to do with the user_uuid. For instance, you can store it together with the tags.
+    table.put_item(Item={'s3_url': 's3://' + bucket + '/' + key, 'tags': detected_result, 'uuid': user_uuid})
 
     return {
         'statusCode': 200,

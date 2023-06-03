@@ -1,18 +1,19 @@
 import boto3
 import base64
+import os
 
 s3 = boto3.client('s3')
 
 
 def lambda_handler(event, context):
-    # assuming the image is sent as base64 in the request body
+
     image = base64.b64decode(event['body'])
 
-    # get the username from the request's authorizer context
-    user = event['requestContext']['authorizer']['claims']['cognito:username']
+    # assuming the uuid is sent in the event
+    user_uuid = event['uuid']
 
-    # construct the s3 key using the username and current timestamp
-    s3_key = f"{user}/{int(time.time())}.jpg"
+    # construct the s3 key using the username, uuid, and current timestamp
+    s3_key = os.path.join("images", user_uuid, f"{event['path']}.jpg")
 
     # upload the image to the s3 bucket
     s3.put_object(
