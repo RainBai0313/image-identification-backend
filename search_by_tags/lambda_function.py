@@ -3,10 +3,11 @@ import json
 
 dynamodb = boto3.resource('dynamodb')
 
+
 def lambda_handler(event, context):
     # specify your DynamoDB table name
     table = dynamodb.Table('detected_images')
-    
+
     user_uuid = event['uuid']
 
     # get the required tags from the event
@@ -24,9 +25,9 @@ def lambda_handler(event, context):
         items = [item for item in items if item['tags'].count(tag['tag']) >= tag['count']]
 
     matching_urls.extend(item['s3_url'] for item in items)
-    
+
     if len(matching_urls) < 1:
-        return{
+        return {
             'statusCode': 404,
             'body': 'No matching images'
         }
