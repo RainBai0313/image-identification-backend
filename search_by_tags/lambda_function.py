@@ -11,7 +11,6 @@ def lambda_handler(event, context):
 
     # get the required tags from the event
     required_tags = event['tags']
-    required_tags_set = set(tag['tag'] for tag in required_tags)
 
     # scan all the items in the table
     response = table.scan()
@@ -20,16 +19,18 @@ def lambda_handler(event, context):
     # initialize a list to store the URLs of the matching images
     matching_urls = []
 
-    # check each item to see if it has all the required tags
-    for item in items:
-        # make a set of the tags in this item
-        item_tags_set = set(tag['S'] for tag in item['tags'])
+    for tag in required_tags:
+        # Remove items that don't have enough of this tag
+        items = [item for item in items if item['tags'].count(tag['tag']) >= tag['count']]
 
-        # if all the required tags are in this item's tags, add the item's URL to the list of matching URLs
-        if required_tags_set.issubset(item_tags_set):
-            matching_urls.append(item['s3_url'])
-
+    matching_urls.extend(item['s3_url'] for item in items)
+    
+    if len(matching_urls) < 1:
+        return{
+            'statusCode': 404,
+            'body': 'No matching images'
+        }
     return {
         'statusCode': 200,
-        'body': json.dumps(matching_urls)
+        'body': matching_urls
     }
