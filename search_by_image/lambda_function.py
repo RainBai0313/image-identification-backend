@@ -16,6 +16,8 @@ confthres = 0.3
 nmsthres = 0.1
 yolo_path = "/opt/yolo_tiny_configs"
 
+dynamodb = boto3.resource('dynamodb')
+
 
 def get_labels(labels_path):
     lpath = os.path.sep.join([yolo_path, labels_path])
@@ -121,8 +123,15 @@ def do_prediction(image, net, LABELS):
 
 
 def lambda_handler(event, context):
+     # specify your DynamoDB table name
+    table = dynamodb.Table('detected_images')
+    
     image_bytes = base64.b64decode(event['body'])
     user_uuid = event['uuid']
+    
+     # scan all the items in the table
+    response = table.scan()
+    items = response['Items']
 
     # load model
     labelsPath = "coco.names"
@@ -141,8 +150,23 @@ def lambda_handler(event, context):
     detected_result = do_prediction(image, net, Labels)
     
     result = Counter(detected_result)
+    
+    tags = list(result.keys())
+    
+    matching_urls = []
+    
+    for tag in tags:
+        # Remove items that don't have enough of this tag
+        items = [item for item in items if item['tags'].count(tag) >= result[tag]]
 
+    matching_urls.extend(item['s3_url'] for item in items)
+    
+    if len(matching_urls) < 1:
+        return{
+            'statusCode': 404,
+            'body': 'No matching images'
+        }
     return {
         'statusCode': 200,
-        'body': result
+        'body': matching_urls
     }
