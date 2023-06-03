@@ -5,6 +5,7 @@ import json
 import numpy as np
 import os
 import time
+import base64
 from botocore.exceptions import NoCredentialsError
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
@@ -119,9 +120,8 @@ def do_prediction(image, net, LABELS):
 
 
 def lambda_handler(event, context):
-    bucket = event['Records'][0]['s3']['bucket']['name']
+    image = base64.b64decode(event['body'])
     user_uuid = event['Records'][0]['s3']['object']['key'].split('/')[1]  # This is the new line for getting UUID
-    key = event['Records'][0]['s3']['object']['key']
 
     # load model
     labelsPath = "coco.names"
