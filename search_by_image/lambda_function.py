@@ -9,6 +9,7 @@ import base64
 from botocore.exceptions import NoCredentialsError
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
+from collections import Counter
 
 # construct the argument parse and parse the arguments
 confthres = 0.3
@@ -120,8 +121,8 @@ def do_prediction(image, net, LABELS):
 
 
 def lambda_handler(event, context):
-    image = base64.b64decode(event['body'])
-    user_uuid = event['Records'][0]['s3']['object']['key'].split('/')[1]  # This is the new line for getting UUID
+    image_bytes = base64.b64decode(event['body'])
+    user_uuid = event['uuid']
 
     # load model
     labelsPath = "coco.names"
@@ -138,8 +139,10 @@ def lambda_handler(event, context):
 
     # do prediction
     detected_result = do_prediction(image, net, Labels)
+    
+    result = Counter(detected_result)
 
     return {
         'statusCode': 200,
-        'body': json.dumps('Image processed successfully!')
+        'body': result
     }
