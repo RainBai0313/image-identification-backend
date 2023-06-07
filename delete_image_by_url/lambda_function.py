@@ -1,35 +1,69 @@
 import boto3
-import os
+import urllib
+from botocore.exceptions import ClientError
 
-s3 = boto3.client('s3')
+s3_client = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('detected_images')
+
+def convert_url(url):
+    s3_url = url.replace("https://", "s3://").replace(".s3.amazonaws.com/images", "/images")
+    return s3_url
+
+def delete_image(url):
+    try:
+        bucket_name = "assignment2group6bucket"
+        object_key = url.replace("https://assignment2group6bucket.s3.amazonaws.com/", "")
+        s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+        return True
+    except ClientError as e:
+        print(e)
+        return False
 
 def lambda_handler(event, context):
-    # Get the s3 url and uuid from the event
-    s3_url = event['url']
-    user_uuid = event['uuid']
+    # Extract data from the event object.
+    url = event['url']
+    uuid = event['uuid']
 
-    # Parse the bucket name and key from the url
-    bucket = s3_url.split('/')[2]
-    key = '/'.join(s3_url.split('/')[3:])
+    # Convert URL to S3 URL.
+    s3_url = convert_url(url)
 
-    # Delete the image from s3
-    s3.delete_object(Bucket=bucket, Key=key)
+    try:
+        response = table.get_item(
+            Key={
+                's3_url': s3_url,
+                'uuid': uuid
+            }
+        )
 
-    # specify your DynamoDB table name
-    table = dynamodb.Table('detected_images')
+        if 'Item' in response:
+            item = response['Item']
+            table.delete_item(
+                Key={
+                    's3_url': s3_url,
+                    'uuid': uuid
+                }
+            )
 
-    # Construct the primary key of the item to be deleted
-    # Replace 'your_primary_key_attribute' with the name of your primary key attribute
-    primary_key = {
-        'uuid': user_uuid,
-        's3_url': s3_url
-    }
-
-    # Delete the item from DynamoDB
-    table.delete_item(Key=primary_key)
-
-    return {
-        'statusCode': 200,
-        'body': 'Image deleted successfully'
-    }
+            # Delete the image from S3 bucket
+            if delete_image(url):
+                return {
+                    'statusCode': 200,
+                    'body': "Delete successful."
+                }
+            else:
+                return {
+                    'statusCode': 500,
+                    'body': "Error deleting image from S3 bucket."
+                }
+        else:
+            return {
+                'statusCode': 404,
+                'body': "URL not found in the table.",
+                'url': s3_url
+            }
+    except ClientError as e:
+        return {
+            'statusCode': 500,
+            'body': f"Error: {e.response['Error']['Message']}"
+        }

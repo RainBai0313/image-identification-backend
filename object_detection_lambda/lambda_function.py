@@ -8,6 +8,7 @@ import time
 from botocore.exceptions import NoCredentialsError
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
+import urllib.parse
 
 # configure S3 client and DynamoDB resource
 s3 = boto3.client('s3')
@@ -17,7 +18,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('detected_images')
 
 # construct the argument parse and parse the arguments
-confthres = 0.3
+confthres = 0.6
 nmsthres = 0.1
 yolo_path = "/opt/yolo_tiny_configs"
 
@@ -50,8 +51,15 @@ def get_image_from_s3(bucket, key):
         return image_bytes
     except NoCredentialsError:
         print('No credentials to access S3')
+        return None
+    except s3.exceptions.NoSuchBucket:
+        print(f"The bucket {bucket} does not exist.")
+        return None
+    except s3.exceptions.NoSuchKey:
+        print(f"The key {key} does not exist in bucket {bucket}.")
+        return None
     except Exception as e:
-        print(e)
+        print(f"An exception occurred: {e}")
         return None
 
 
@@ -161,7 +169,6 @@ def lambda_handler(event, context):
     detected_result = do_prediction(image, net, Labels)
 
     # store result into DynamoDB
-    # Here you can decide what to do with the user_uuid. For instance, you can store it together with the tags.
     table.put_item(Item={'s3_url': 's3://' + bucket + '/' + key, 'tags': detected_result, 'uuid': user_uuid})
 
     return {
